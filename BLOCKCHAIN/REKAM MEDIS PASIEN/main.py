@@ -1,44 +1,38 @@
-from blockchain import Blockchain
+from block import Block
+from pow import proof_of_work
+from pos import proof_of_stake
 
+print("PROOF OF WORK")
 
-blockchain = Blockchain()
+block = Block(
+    index=1,
+    data="Kopi dari Farmer",
+    previous_hash="0"
+)
 
+difficulty = 4
 
-blockchain.add_block({
+print("\nData Block     :", block.data)
+print("Difficulty     :", difficulty)
 
-    "pasien_id": "pasien-001",
-    "sick": "Gagal Ginjal",
-    "actor": "Dokter",
-    "location": "Cirebon"
-})
+proof_of_work(block, difficulty)
 
-blockchain.add_block({
-    "perawat_id": "perawat-001",
-    "sick": "Gagal Ginjal",
-    "actor": "Perawat",
-    "location": "Cirebon"
-})
+print("Nonce          :", block.nonce)
+print("Hash           :", block.hash)
 
-blockchain.add_block({
-    "wali_id": "wali-001",
-    "sick": "Gagal Ginjal",
-    "actor": "Wali",
-    "location": "Cirebon"
-})
+print("PROOF OF STAKE")
 
-blockchain.add_block({
-    "pasien_id": "pasien-004",
-    "sick": "Gagal Ginjal",
-    "actor": "pasien",
-    "location": "Cirebon"
-})
+validators = {
+    "Farmer": 10,
+    "Distributor": 20,
+    "Warehouse": 30,
+    "Retailer": 40
+}
 
+print("\nValidator:")
+for validator, stake in validators.items():
+    print(f"- {validator}: {stake} stake")
 
-for block in blockchain.chain:
-    print("=" * 50)
-    print("INDEX :", block.index)
-    print("DATA  :", block.data)
-    print("PREV  :", block.previous_hash)
-    print("HASH  :", block.hash)
+selected = proof_of_stake(validators)
 
-print("\nBlockchain valid:", blockchain.is_valid())
+print("\nValidator terpilih:", selected)
