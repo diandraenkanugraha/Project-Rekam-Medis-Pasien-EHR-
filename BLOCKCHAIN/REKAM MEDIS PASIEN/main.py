@@ -6,11 +6,11 @@ print("PROOF OF WORK")
 
 block = Block(
     index=1,
-    data="Kopi dari Farmer",
+    data="Resep dari Dokter",
     previous_hash="0"
 )
 
-difficulty = 4
+difficulty = 5
 
 print("\nData Block     :", block.data)
 print("Difficulty     :", difficulty)
@@ -23,10 +23,10 @@ print("Hash           :", block.hash)
 print("PROOF OF STAKE")
 
 validators = {
-    "Farmer": 10,
-    "Distributor": 20,
-    "Warehouse": 30,
-    "Retailer": 40
+    "Dokter": 10,
+    "Pasien": 95,
+    "Rumah Sakit": 40,
+    "Wali": 80
 }
 
 print("\nValidator:")
