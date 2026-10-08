@@ -1,0 +1,1 @@
+Solver test: label=all_upper_GHIJKLMNOPQRSTUVWXYZ; n1=5; n2=10; word3=DATA; SHA256: d971d4f32819bff1de43b6db3caee2b1e3e46a3c96d3d1e3d54dd4d3deedbeef

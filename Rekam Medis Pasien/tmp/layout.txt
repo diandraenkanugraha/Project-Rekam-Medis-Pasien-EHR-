@@ -1,0 +1,1 @@
+0xacc147ff + wallet + offset(0x40) + 6 head slots (0xc0,0x100,0x140,0x180,0x1c0,0x1e0) + tail: len4+Andi, len16+NIK, len10+date, len7+Bandung, len1+O, len4+0811
