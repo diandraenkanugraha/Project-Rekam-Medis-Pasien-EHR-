@@ -20,6 +20,9 @@ except ImportError:
 # =========================================================
 RPC_URL = "http://127.0.0.1:8545"
 BASE = Path(__file__).parent
+PROJECT_DIR = BASE
+DEPLOYMENT_PATH = PROJECT_DIR / "deployment.json"        # dibuat oleh scripts/deploy.js
+ARTIFACT_PATH = PROJECT_DIR / "artifacts" / "contracts" / "EHR.sol" / "EHR.json"   # dibuat oleh hardhat compile
 STORE = BASE / "offchain_store"          # simulasi penyimpanan off-chain
 STORE.mkdir(exist_ok=True)
 STATUS = ["ADDED", "DIAGNOSED", "TREATED", "DISCHARGED"]
@@ -304,11 +307,17 @@ def when(ts):
 
 
 def load_abi():
-    for p in [BASE / "EHR_abi.json", BASE / "artifacts/contracts/EHR.sol/EHR.json", BASE / "artifacts/EHR.json"]:
-        if p.exists():
-            d = json.loads(p.read_text())
-            return d["abi"] if isinstance(d, dict) else d
-    return None
+    """Baca ABI dari artifact hasil `npx hardhat compile`."""
+    if not ARTIFACT_PATH.exists():
+        return None
+    return json.loads(ARTIFACT_PATH.read_text())["abi"]
+
+
+def load_deployment():
+    """Baca alamat kontrak dari deployment.json hasil `npx hardhat run scripts/deploy.js`."""
+    if not DEPLOYMENT_PATH.exists():
+        return None
+    return json.loads(DEPLOYMENT_PATH.read_text())
 
 
 def cipher():
@@ -324,20 +333,41 @@ def cipher():
 w3 = Web3(Web3.HTTPProvider(RPC_URL, request_kwargs={"timeout": 8}))
 rpc_ok = w3.is_connected()
 abi = load_abi()
+deployment = load_deployment()
+
+# =========================================================
+# LOAD CONTRACT ADDRESS (deployment.json) + INISIALISASI KONTRAK
+# =========================================================
+C = None
+contract_error = None
+if not rpc_ok:
+    contract_error = "Tidak dapat terhubung ke Hardhat Network. Pastikan Hardhat Node sedang berjalan."
+elif deployment is None:
+    contract_error = "File deployment.json tidak ditemukan. Silakan deploy smart contract terlebih dahulu."
+elif abi is None:
+    contract_error = "Artifact smart contract tidak ditemukan. Silakan compile smart contract terlebih dahulu."
+else:
+    CONTRACT_ADDRESS = Web3.to_checksum_address(deployment["address"])
+    if w3.eth.get_code(CONTRACT_ADDRESS) in (b"", b"\x00"):
+        contract_error = ("Tidak ada kontrak di alamat pada deployment.json. Hardhat Node kemungkinan di-restart. "
+                          "Jalankan deploy ulang.")
+    else:
+        C = w3.eth.contract(address=CONTRACT_ADDRESS, abi=abi)
 
 with st.sidebar:
-    st.markdown("### Pengaturan")
-    addr_in = st.text_input("Alamat kontrak EHR", key="addr", placeholder="0x… dari hasil deploy")
+    st.markdown("### Koneksi kontrak")
     st.caption(f"RPC: {RPC_URL}")
     st.markdown(f"Hardhat RPC: **{'terhubung' if rpc_ok else 'mati'}**")
-    st.markdown(f"ABI kontrak: **{'siap' if abi else 'tidak ditemukan'}**")
-    st.caption("Setiap node Hardhat di-restart, kontrak harus di-deploy ulang dan alamat baru dimasukkan di sini.")
-
-C = None
-if rpc_ok and abi and Web3.is_address(addr_in or ""):
-    addr = Web3.to_checksum_address(addr_in)
-    if w3.eth.get_code(addr) not in (b"", b"\x00"):
-        C = w3.eth.contract(address=addr, abi=abi)
+    st.markdown(f"ABI (artifact): **{'siap' if abi else 'tidak ditemukan'}**")
+    st.markdown(f"deployment.json: **{'siap' if deployment else 'tidak ditemukan'}**")
+    if C is not None:
+        st.markdown("Alamat kontrak (otomatis):")
+        st.code(CONTRACT_ADDRESS, language=None)
+        try:
+            st.caption(f"{C.functions.name().call()} ({C.functions.symbol().call()}) · owner: {short(C.functions.owner().call())}")
+        except Exception:
+            pass
+    st.caption("Setelah deploy ulang, cukup refresh halaman. Alamat kontrak dibaca otomatis dari deployment.json.")
 
 SELECTORS = {}
 for item in abi or []:
@@ -395,11 +425,8 @@ if "flash" in st.session_state:
     if tx:
         st.code(tx)
 
-if not rpc_ok:
-    st.error("Hardhat RPC tidak dapat diakses. Jalankan 'npx hardhat node' di terminal lain.")
-    st.stop()
-if abi is None:
-    st.error("File EHR_abi.json tidak ditemukan. Letakkan di folder yang sama dengan app.py.")
+if contract_error:
+    st.error(contract_error)
     st.stop()
 
 cells = [(w3.eth.block_number, "Blok terbaru"), (count("PatientRegistered"), "Pasien terdaftar"),
@@ -409,14 +436,6 @@ st.markdown('<div class="stat">' + "".join(
     '<div class="flow"><span class="n"><i>1</i>Input</span><span class="a"></span><span class="n"><i>2</i>Validasi kontrak</span><span class="a"></span>'
     '<span class="n"><i>3</i>Authority menandatangani</span><span class="a"></span><span class="n"><i>4</i>Blok ditambahkan</span><span class="a"></span>'
     '<span class="n"><i>5</i>NFT dicetak</span></div>', unsafe_allow_html=True)
-
-if C is None:
-    st.info(
-        "Masukkan alamat kontrak EHR di sidebar. Belum punya? Jalankan di terminal kedua:\n\n"
-        "`npx hardhat run scripts/deploy.js --network localhost`\n\n"
-        "Pastikan deploy.js memakai nama kontrak `EHR`. Salin 'Alamat kontrak' dari hasilnya."
-    )
-    st.stop()
 
 # =========================================================
 # DOMPET + PERAN AKTIF

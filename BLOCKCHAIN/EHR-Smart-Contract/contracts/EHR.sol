@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.24;
 
-/// @title EHR - Rekam Medis Pasien berbasis Blockchain (PoA)
-/// @notice Data medis sensitif TIDAK disimpan di sini. Hanya hash, referensi off-chain,
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+
+/// @title EHR - Rekam Medis Pasien berbasis Blockchain (PoA) + Tokenisasi ERC-721
+/// @notice Setiap rekam medis (MedicalRecord) ditokenisasi menjadi 1 NFT ERC-721.
+///         tokenId == recordId, pemilik NFT awal == wallet pasien.
+///         Data medis sensitif TIDAK disimpan di sini. Hanya hash, referensi off-chain,
 ///         status, akses, dan timestamp yang disimpan on-chain.
-contract EHR {
+contract EHR is ERC721URIStorage {
     // =====================================================
     // 1. ENUM
     // =====================================================
@@ -71,7 +75,8 @@ contract EHR {
     // 3. STATE
     // =====================================================
     address public owner;
-    uint256 private nextRecordId = 1;
+    // Token ID otomatis (Mint pertama -> 1, kedua -> 2, ...). tokenId == recordId
+    uint256 private nextTokenId = 1;
 
     mapping(address => bool) public isAuthority;
 
@@ -128,7 +133,7 @@ contract EHR {
     // =====================================================
     // 6. CONSTRUCTOR & MODIFIER
     // =====================================================
-    constructor() {
+    constructor() ERC721("EHR Medical Record", "EHR") {
         owner = msg.sender;
         isAuthority[msg.sender] = true;
         emit AuthorityAdded(msg.sender);
@@ -171,12 +176,12 @@ contract EHR {
         returns (bytes32 patientId)
     {
         if (_wallet == address(0)) revert InvalidAddress();
-        if (bytes(_input.nama).length == 0) revert InvalidInput("nama");
+        _required(_input.nama, "nama");
         if (bytes(_input.nik).length != 16) revert InvalidInput("NIK harus 16 karakter");
-        if (bytes(_input.tglLahir).length == 0) revert InvalidInput("tgl_lahir");
-        if (bytes(_input.alamat).length == 0) revert InvalidInput("alamat");
-        if (bytes(_input.golDarah).length == 0) revert InvalidInput("gol_darah");
-        if (bytes(_input.noTelepon).length == 0) revert InvalidInput("no_telepon");
+        _required(_input.tglLahir, "tgl_lahir");
+        _required(_input.alamat, "alamat");
+        _required(_input.golDarah, "gol_darah");
+        _required(_input.noTelepon, "no_telepon");
 
         bytes32 nikHash = keccak256(bytes(_input.nik));
         if (nikRegistered[nikHash]) revert PatientAlreadyRegistered();
@@ -213,9 +218,9 @@ contract EHR {
     ) external onlyAuthority returns (bytes32 entityId) {
         if (_wallet == address(0)) revert InvalidAddress();
         if (_role != Role.DOCTOR && _role != Role.HOSPITAL) revert InvalidInput("role");
-        if (bytes(_nama).length == 0) revert InvalidInput("nama");
-        if (bytes(_nomorIzin).length == 0) revert InvalidInput("nomor_izin");
-        if (bytes(_detail).length == 0) revert InvalidInput("spesialisasi/alamat_rs");
+        _required(_nama, "nama");
+        _required(_nomorIzin, "nomor_izin");
+        _required(_detail, "spesialisasi/alamat_rs");
 
         bytes32 licenseHash = keccak256(bytes(_nomorIzin));
         if (licenseRegistered[licenseHash]) revert EntityAlreadyRegistered();
@@ -262,8 +267,9 @@ contract EHR {
         if (_dataHash == bytes32(0)) revert InvalidInput("data_hash");
         if (bytes(_offChainRef).length == 0) revert InvalidInput("offChainRef");
 
-        recordId = nextRecordId;
-        nextRecordId++;
+        // Ambil Token ID, lalu naikkan untuk token berikutnya
+        recordId = nextTokenId;
+        nextTokenId++;
 
         records[recordId] = MedicalRecord({
             id: recordId,
@@ -279,7 +285,17 @@ contract EHR {
 
         patientRecordIds[_patientId].push(recordId);
 
+        // Tokenisasi: mint NFT ke wallet pasien (dilakukan terakhir, setelah semua state tersimpan)
+        // _metadata menjadi tokenURI, jadi HARUS berisi info aman (non-sensitif)
+        mint(patients[_patientId].wallet, recordId, _metadata);
+
         emit RecordCreated(recordId, _patientId, _doctorId, _dataHash, block.timestamp);
+    }
+
+    /// Membuat NFT dan menyimpan metadata URI-nya (pola dari modul)
+    function mint(address to, uint256 tokenId, string memory metadataURI) internal {
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, metadataURI);
     }
 
     /// B2. updateRecordStatus
@@ -361,6 +377,13 @@ contract EHR {
         return rec;
     }
 
+    /// Melihat pemilik NFT rekam medis (tokenId == recordId)
+    /// Tidak memakai pembatasan akses: pemilik NFT memang publik di standar ERC-721.
+    function getRecordOwner(uint256 _tokenId) public view returns (address) {
+        if (records[_tokenId].id == 0) revert RecordNotFound();
+        return ownerOf(_tokenId);
+    }
+
     /// Verifikasi integritas: bandingkan hash data off-chain dengan hash on-chain.
     /// (Pengambilan data off-chain & dekripsi dilakukan backend.)
     function verifyRecordIntegrity(uint256 _recordId, bytes32 _offChainDataHash)
@@ -408,12 +431,6 @@ contract EHR {
     // =====================================================
     // GETTER PENDUKUNG
     // =====================================================
-    function getPatient(bytes32 _patientId) external view returns (Patient memory) {
-        if (patients[_patientId].id == bytes32(0)) revert PatientNotFound();
-        if (!_canRead(_patientId, msg.sender)) revert AccessDenied();
-        return patients[_patientId];
-    }
-
     function getEntity(bytes32 _entityId) external view returns (Entity memory) {
         if (entities[_entityId].id == bytes32(0)) revert EntityNotFound();
         return entities[_entityId];
@@ -422,6 +439,12 @@ contract EHR {
     // =====================================================
     // INTERNAL
     // =====================================================
+
+    // Validasi string wajib diisi
+    function _required(string calldata _value, string memory _field) internal pure {
+        if (bytes(_value).length == 0) revert InvalidInput(_field);
+    }
+
     function _isVerifiedDoctor(bytes32 _id) internal view returns (bool) {
         Entity storage e = entities[_id];
         return e.id != bytes32(0) && e.role == Role.DOCTOR && e.verified;
