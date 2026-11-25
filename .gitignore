@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+artifacts/
+cache/
+ignition/deployments/
+typechain/
+typechain-types/
+coverage/
+coverage.json
+
+# local deploy state & sensitive data
+deployment.json
+offchain_store/
+
+# python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# secrets & environment
+.env
+.env.*
+*.key
+*.log
+hh.tmp.config.js
+
+# os & editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.agents/
+.claude/

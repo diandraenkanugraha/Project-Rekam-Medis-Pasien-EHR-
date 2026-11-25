@@ -1,23 +1,36 @@
-node_modules
-.env
+# dependencies
+node_modules/
 
-# Hardhat files
-/cache
-/artifacts
+# build output
+dist/
+artifacts/
+cache/
+ignition/deployments/
+typechain/
+typechain-types/
+coverage/
+coverage.json
 
-# TypeChain files
-/typechain
-/typechain-types
-
-# solidity-coverage files
-/coverage
-/coverage.json
-
-# Hardhat Ignition default folder for deployments against a local node
-ignition/deployments/chain-31337
-
-# Off-chain store: generated at runtime (berisi kunci enkripsi + data pasien)
+# local deploy state & sensitive data
+deployment.json
 offchain_store/
 
-# Log diagnosa Git Credential Manager
-gcm-diagnose.log
+# python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# secrets & environment
+.env
+.env.*
+*.key
+*.log
+hh.tmp.config.js
+
+# os & editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.agents/
+.claude/
