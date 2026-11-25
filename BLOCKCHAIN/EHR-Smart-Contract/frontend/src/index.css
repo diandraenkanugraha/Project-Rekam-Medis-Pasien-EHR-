@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html, body, #root { min-height: 100%; }
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  color: #0b2236;
+  background: #eef6fa;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Latar aurora lembut (biru + teal), bergerak pelan */
+.aurora { position: fixed; inset: 0; z-index: -1; overflow: hidden;
+  background: linear-gradient(180deg, #f6fbfd 0%, #e9f3f8 100%); }
+.aurora i { position: absolute; border-radius: 9999px; filter: blur(70px); opacity: .55; animation: drift 22s ease-in-out infinite alternate; }
+.aurora i:nth-child(1) { width: 46vw; height: 46vw; left: -10vw; top: -14vw; background: #7fe3d3; }
+.aurora i:nth-child(2) { width: 40vw; height: 40vw; right: -8vw; top: 6vh; background: #8cc8ff; animation-duration: 28s; }
+.aurora i:nth-child(3) { width: 34vw; height: 34vw; left: 30vw; bottom: -16vw; background: #c4dcff; animation-duration: 34s; }
+@keyframes drift { to { transform: translate3d(5vw, 4vh, 0) scale(1.12); } }
+
+.glass {
+  background: rgba(255,255,255,.62);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255,255,255,.85);
+  box-shadow: 0 10px 40px -12px rgba(14,116,144,.20), inset 0 1px 0 rgba(255,255,255,.9);
+  border-radius: 24px;
+}
+.glass-strong { background: rgba(255,255,255,.82); }
+
+.hash { font-family: 'JetBrains Mono', monospace; font-size: .72rem; letter-spacing: -.01em; }
+.label { font-size: .68rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #5b7387; }
+
+.btn { display: inline-flex; align-items: center; gap: .5rem; border-radius: 14px; padding: .65rem 1.1rem;
+  font-weight: 700; font-size: .86rem; transition: transform .2s, box-shadow .2s, background .2s; }
+.btn:active { transform: scale(.97); }
+.btn-primary { color: #fff; background: linear-gradient(135deg, #0ea5a4 0%, #2563eb 100%);
+  box-shadow: 0 10px 24px -10px rgba(37,99,235,.55); }
+.btn-primary:hover { box-shadow: 0 14px 30px -10px rgba(37,99,235,.7); transform: translateY(-1px); }
+.btn-ghost { color: #0b2236; background: rgba(255,255,255,.7); border: 1px solid rgba(255,255,255,.9); }
+.btn-ghost:hover { background: #fff; }
+
+.blk-label { text-align: center; font-family: 'JetBrains Mono', monospace; pointer-events: none; white-space: nowrap; }
+.blk-label b { display: block; font-size: 13px; color: #0b2236; }
+.blk-label span { font-size: 10px; color: #5b7387; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(91,115,135,.3); border-radius: 8px; }
